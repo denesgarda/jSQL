@@ -131,6 +131,86 @@ class Database {
                         throw new SQLException(util.sqlSyntaxError, query, 6);
                     }
                 }
+            } else if (util.equalsIgnoreCase(args[0], "INSERT")) {
+                if (args.length == 1) {
+                    throw new SQLException(util.sqlSyntaxError, query, 8);
+                } else {
+                    if (util.equalsIgnoreCase(args[1], "INTO")) {
+                        if (args.length == 2) {
+                            throw new SQLException(util.sqlSyntaxError, query, 13);
+                        } else {
+                            const schemaArgs = args[2].split(".");
+                            if (schemaArgs.length != 2) {
+                                throw new SQLException(util.sqlSyntaxError, query, 13);
+                            } else {
+                                let files;
+                                if (this.async) {
+                                    files = fs.readdir(this.path);
+                                } else {
+                                    files = fs.readdirSync(this.path);
+                                }
+                                if (files.includes(schemaArgs[0] + ".json")) {
+                                    let schema;
+                                    if (this.async) {
+                                        schema = JSON.parse(fs.readFile(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
+                                    } else {
+                                        schema = JSON.parse(fs.readFileSync(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
+                                    }
+                                    if (schema.hasOwnProperty(schemaArgs[1])) {
+                                        const cs = util.getPosition(query, "(", 1);
+                                        const ce = util.getPosition(query, ")", 1);
+                                        if (cs == -1 || ce == -1) {
+                                            throw new SQLException(util.sqlSyntaxError, query, 13 + args[2].length + 1);
+                                        } else {
+                                            const rawColumns = query.substring(cs + 1, ce);
+                                            let columns = rawColumns.charAt(0);
+                                            for (let i = 0; i < rawColumns.length; i++) {
+                                                if (rawColumns.charAt(i) != " " && rawColumns.charAt(i - 1)) {
+                                                    columns += rawColumns.charAt(i);
+                                                }
+                                            }
+                                            columns = columns.trim();
+                                            const allColumns = columns.split(",");
+                                            const vs = util.getPosition(query, "(", 2);
+                                            const ve = util.getPosition(query, ")", 2);
+                                            if (vs == -1 || ve == -1) {
+                                                throw new SQLException(util.sqlSyntaxError, query, 13 + args[2].length + 1);
+                                            } else {
+                                                const rawValues = query.substring(vs + 1, ve);
+                                                let values = rawValues.charAt(0);
+                                                for (let i = 0; i < rawValues.length; i++) {
+                                                    if (rawValues.charAt(i) != " " && rawValues.charAt(i - 1)) {
+                                                        values += rawValues.charAt(i);
+                                                    }
+                                                }
+                                                values = values.trim();
+                                                const allValues = values.split(",");
+                                                if (allColumns.length == allValues.length) {
+                                                    const toPush = {};
+                                                    allColumns.forEach((key, i) => toPush[key] = allValues[i]);
+                                                    schema[schemaArgs[1]].push(toPush);
+                                                    if (this.async) {
+                                                        fs.writeFile(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
+                                                    } else {
+                                                        fs.writeFileSync(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
+                                                    }
+                                                } else {
+                                                    throw new SQLException("Number of columns does not match number of values.");
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        throw new SQLException("Table " + schemaArgs[1] + " doesn't exist in schema " + schemaArgs[0] + ".");
+                                    }
+                                } else {
+                                    throw new SQLException("Schema " + schemaArgs[0] + " does not exist.");
+                                }
+                            }
+                        }
+                    } else {
+                        throw new SQLException(util.sqlSyntaxError, query, 8);
+                    }
+                }
             }
         } else {
             throw new SQLException(util.sqlSyntaxError);

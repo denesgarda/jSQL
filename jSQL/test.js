@@ -1,5 +1,5 @@
 const jSQL = require("./index");
 
-const testDB = new jSQL.Database("./database", false);
+const db = new jSQL.Database("./database", false);
 
-testDB.execute("DROP TABLE test-schema.test-table");
+db.execute("INSERT INTO main.accounts (username, password) VALUES (user1, pass1)");

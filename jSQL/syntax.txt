@@ -1,3 +1,5 @@
 CREATE TABLE <schema>.<table name>
 
-DROP TABLE <schema>.<table name> #
+DROP TABLE <schema>.<table name>
+
+INSERT INTO <schema>.<table name> (<column 1>, <column 2>, <column 3>, ...) VALUES (<value 1>, <value 2>, <value 3>, ...) #
