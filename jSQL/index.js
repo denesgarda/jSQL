@@ -208,6 +208,54 @@ class Database {
                         throw new SQLException(util.sqlSyntaxError, query, 8);
                     }
                 }
+            } else if (util.equalsIgnoreCase(args[0], "DELETE")) {
+                if (args.length == 1) {
+                    throw new SQLException(util.sqlSyntaxError, query, 8);
+                } else {
+                    if (util.equalsIgnoreCase(args[1], "FROM")) {
+                        if (args.length == 2) {
+                            throw new SQLException(util.sqlSyntaxError, query, 13);
+                        } else {
+                            const schemaArgs = args[2].split(".");
+                            if (schemaArgs.length != 2) {
+                                throw new SQLException(util.sqlSyntaxError, query, 13);
+                            } else {
+                                let files;
+                                if (this.async) {
+                                    files = fs.readdir(this.path);
+                                } else {
+                                    files = fs.readdirSync(this.path);
+                                }
+                                if (files.includes(schemaArgs[0] + ".json")) {
+                                    let schema;
+                                    if (this.async) {
+                                        schema = JSON.parse(fs.readFile(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
+                                    } else {
+                                        schema = JSON.parse(fs.readFileSync(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
+                                    }
+                                    if (schema.hasOwnProperty(schemaArgs[1])) {
+                                        if (args.length == 3) {
+                                            schema[schemaArgs[1]] = [];
+                                            if (this.async) {
+                                                fs.writeFile(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
+                                            } else {
+                                                fs.writeFileSync(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
+                                            }
+                                        } else {
+                                            // Add WHERE clause
+                                        }
+                                    } else {
+                                        throw new SQLException("Table " + schemaArgs[1] + " doesn't exist in schema " + schemaArgs[0] + ".");
+                                    }
+                                } else {
+                                    throw new SQLException("Schema " + schemaArgs[0] + " does not exist.");
+                                }
+                            }
+                        }
+                    } else {
+                        throw new SQLException(util.sqlSyntaxError, query, 8);
+                    }
+                }
             }
         } else {
             throw new SQLException(util.sqlSyntaxError);
