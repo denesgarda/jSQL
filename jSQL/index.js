@@ -163,39 +163,36 @@ class Database {
                                             throw new SQLException(util.sqlSyntaxError, query, 13 + args[2].length + 1);
                                         } else {
                                             const rawColumns = query.substring(cs + 1, ce);
-                                            let columns = rawColumns.charAt(0);
-                                            for (let i = 0; i < rawColumns.length; i++) {
-                                                if (rawColumns.charAt(i) != " " && rawColumns.charAt(i - 1)) {
-                                                    columns += rawColumns.charAt(i);
-                                                }
-                                            }
-                                            columns = columns.trim();
-                                            const allColumns = columns.split(",");
+                                            const columns = util.parseColumns(query, rawColumns);
                                             const vs = util.getPosition(query, "(", 2);
                                             const ve = util.getPosition(query, ")", 2);
-                                            if (vs == -1 || ve == -1) {
-                                                throw new SQLException(util.sqlSyntaxError, query, 13 + args[2].length + 1);
-                                            } else {
-                                                const rawValues = query.substring(vs + 1, ve);
-                                                let values = rawValues.charAt(0);
-                                                for (let i = 0; i < rawValues.length; i++) {
-                                                    if (rawValues.charAt(i) != " " && rawValues.charAt(i - 1)) {
-                                                        values += rawValues.charAt(i);
-                                                    }
-                                                }
-                                                values = values.trim();
-                                                const allValues = values.split(",");
-                                                if (allColumns.length == allValues.length) {
-                                                    const toPush = {};
-                                                    allColumns.forEach((key, i) => toPush[key] = allValues[i]);
-                                                    schema[schemaArgs[1]].push(toPush);
-                                                    if (this.async) {
-                                                        fs.writeFile(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                                    } else {
-                                                        fs.writeFileSync(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                                    }
+                                            if (!util.equalsIgnoreCase(query.substring(ce + 1, vs).trim(), "VALUES")) {
+                                                throw new SQLException(util.sqlSyntaxError, query, 13 + args[2].length + rawColumns.length + 4);
+                                            }
+                                            else {
+                                                if (vs == -1 || ve == -1) {
+                                                    throw new SQLException(util.sqlSyntaxError, query, query.indexOf("VALUES") + 8);
                                                 } else {
-                                                    throw new SQLException("Number of columns does not match number of values.");
+                                                    const values = util.parseValues(query);
+                                                    let failed = false;
+                                                    values.forEach(function(set) {
+                                                        if (columns.length != set.length) {
+                                                            throw new SQLException("Number of columns does not match number of values.");
+                                                            failed = true;
+                                                        }
+                                                    });
+                                                    if (!failed) {
+                                                        values.forEach(function(set) {
+                                                            const toPush = {};
+                                                            columns.forEach((key, i) => toPush[key] = set[i]);
+                                                            schema[schemaArgs[1]].push(toPush);
+                                                        });
+                                                        if (this.async) {
+                                                            fs.writeFile(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
+                                                        } else {
+                                                            fs.writeFileSync(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
