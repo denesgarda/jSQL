@@ -313,7 +313,7 @@ class Database {
                     }
                 }
             } else if (args[0] == ".") {
-                if (args.length != 4) {
+                if (args.length < 3) {
                     throw new SQLException(query, query.length + 1);
                 } else {
                     let name;
@@ -333,14 +333,23 @@ class Database {
                             let schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
                             let get = [];
                             if (schema.hasOwnProperty(tableName)) {
-                                const conditions = eval("(" + args[3] + ")");
-                                for (let i = 0; i < schema[tableName].length; i++) {
-                                    const row = schema[tableName][i];
-                                    let g = true;
-                                    g = parse(row, conditions, g);
-                                    if (g) {
+                                if (args.length == 4) {
+                                    const conditions = eval("(" + args[3] + ")");
+                                    for (let i = 0; i < schema[tableName].length; i++) {
+                                        const row = schema[tableName][i];
+                                        let g = true;
+                                        g = parse(row, conditions, g);
+                                        if (g) {
+                                            get.push(row);
+                                        }
+                                    }
+                                } else if (args.length == 3) {
+                                    for (let i = 0; i < schema[tableName].length; i++) {
+                                        const row = schema[tableName][i];
                                         get.push(row);
                                     }
+                                } else {
+                                    throw new SQLException(query, query.length + 1);
                                 }
                                 return get;
                             } else {
