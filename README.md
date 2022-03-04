@@ -4,6 +4,12 @@ jSQL is a locally instanciated database.
 
 ## Node.js
 
+### Installation
+
+```
+npm install --save DenDen747/jSQL
+```
+
 ### Initialization
 
 Create an emtpy directory which will act as the database.
