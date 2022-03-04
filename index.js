@@ -14,7 +14,7 @@ class Database {
             let args = [];
             rawArgs.forEach(function(arg) {
                 if (arg != "") {
-                    args.push(arg);
+                    args.push(arg.trim());
                 }
             });
             if (args[0] == "+") {
