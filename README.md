@@ -24,7 +24,7 @@ const database = new jSQL.Database(__dirname + "/database");
 
 ### Execution
 
-The ``execute`` function let's you execute queries on the database. jSQL uses [special syntax](##Syntax).
+The ``execute`` function let's you execute queries on the database. jSQL uses [special syntax](#Syntax).
 
 To execute a statement or a query, you have to do the following. ``query`` is a string.
 
