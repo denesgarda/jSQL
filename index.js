@@ -4,9 +4,8 @@ const path = require("path");
 const SQLException = require("./err/SQLException");
 
 class Database {
-    constructor(path, async) {
+    constructor(path) {
         this.path = path;
-        this.async = async;
     }
 
     execute(query) {
