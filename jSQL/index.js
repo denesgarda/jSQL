@@ -313,8 +313,44 @@ class Database {
                         }
                     }
                 }
-            } else if (args[0] == "-.") {
-                
+            } else if (args[0] == ".") {
+                if (args.length != 4) {
+                    throw new SQLException(query, query.length + 1);
+                } else {
+                    let name;
+                    try {
+                        name = eval(args[1]);
+                    } catch {
+                        throw new SQLException(query, query.length - args[1].length + 1, "Unexpected Token");
+                    }
+                    let files = fs.readdirSync(this.path);
+                    if (files.includes(name + ".json")) {
+                        let tableName;
+                            try {
+                                tableName = eval(args[2]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            let schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
+                            let get = [];
+                            if (schema.hasOwnProperty(tableName)) {
+                                const conditions = eval("(" + args[3] + ")");
+                                for (let i = 0; i < schema[tableName].length; i++) {
+                                    const row = schema[tableName][i];
+                                    let g = true;
+                                    g = parse(row, conditions, g);
+                                    if (g) {
+                                        get.push(row);
+                                    }
+                                }
+                                return get;
+                            } else {
+                                throw new SQLException("Table " + tableName + " does not exist in schema " + name + ".");
+                            }
+                    } else {
+                        throw new SQLException("Schema " + name + " does not exists.");
+                    }
+                }
             } else {
                 throw new SQLException(query, 1, "Unexpected Token")
             }
