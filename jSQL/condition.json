@@ -1,0 +1,8 @@
+{
+  "&": {
+    "username": [["user1"], [true]],
+    "/": {
+      "passowrd": [ [ "pass1", "pass2" ], [ true, true] ]
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "name": "jsql",
   "version": "1.0.0",
-  "description": "jSQL is a local json database for node.js",
+  "description": "jSQL is a locally instanciated database",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

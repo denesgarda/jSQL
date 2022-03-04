@@ -1,7 +1,43 @@
-CREATE TABLE <schema>.<table name>
+CREATE SCHEMA
 
-DROP TABLE <schema>.<table name>
++|schema|"<schema>"
 
-INSERT INTO <schema>.<table name> (<column 1>, <column 2>, <column 3>, ...) VALUES (<value 1.1>, <value 1.2>, <value 1.3>, ...), (<value 2.1>, <value 2.2>, <value 2.3>, ...), ...
+DELETE SCHEMA
 
-DELETE FROM <schema>.<table name>
+-|schema|"<schema>"
+
+UPDATE SCHEMA
+
+^|schema|"<old name>"|"<new name>"
+
+CREATE TABLE
+
++|table|"<schema>"|"<table>"
+
+DELETE TABLE
+
+-|table|"<schema>"|"<table>"
+
+UPDATE TABLE
+
+^|table|"<schema>"|"<old name>"|"<new name>"
+
+INSERT INTO
+
++|"<schema>"|"<table>"|{object}
+
+DELETE FROM
+
+-|"<schema>"|"<table>"
+
+DELETE FROM WHERE
+
+-|"<schema>"|"<table>"|{conditions}
+
+UPDATE
+
+^|"<schema>"|"<table>"|{object}|{conditions}
+
+SELECT FROM
+
+.|"<schema>"|"<table>"|{conditions}

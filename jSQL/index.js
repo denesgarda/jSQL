@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const util = require("./util");
 
 const SQLException = require("./err/SQLException");
 
@@ -10,278 +9,372 @@ class Database {
         this.async = async;
     }
 
-    create() {
-        if (this.async) {
-            fs.mkdir(this.path, { recursive: true });
-        } else {
-            fs.mkdirSync(this.path, { recursive: true });
-        }
-    }
-
-    delete() {
-        if (this.async) {
-            fs.rmdir(this.path, { recursive: true });
-        } else {
-            fs.rmdirSync(this.path, { recursive: true });
-        }
-    }
-
-    getSchema(name) {
-        const schema = new Schema(this, name);
-        schema.create();
-        return schema;
-    }
-
     execute(query) {
         if (query) {
-            const args = query.split(" ");
-            if(util.equalsIgnoreCase(args[0], "CREATE")) {
+            const rawArgs = query.split("|");
+            let args = [];
+            rawArgs.forEach(function(arg) {
+                if (arg != "") {
+                    args.push(arg);
+                }
+            });
+            if (args[0] == "+") {
                 if (args.length == 1) {
-                    throw new SQLException(util.sqlSyntaxError, query, 8);
+                    throw new SQLException(query, query.length + 1);
                 } else {
-                    if (util.equalsIgnoreCase(args[1], "TABLE")) {
+                    if (args[1] == "schema") {
                         if (args.length != 3) {
-                            let location = 14;
-                            if (args.length > 3) {
-                                location += args[2].length + 1;
-                            }
-                            throw new SQLException(util.sqlSyntaxError, query, location);
+                            throw new SQLException(query, query.length + 1);
                         } else {
-                            const schemaArgs = args[2].split(".");
-                            if (schemaArgs.length != 2) {
-                                throw new SQLException(util.sqlSyntaxError, query, 14);
+                            let name;
+                            try {
+                                name = eval(args[2]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                throw new SQLException("Schema " + name + " already exists.");
                             } else {
-                                let files;
-                                if (this.async) {
-                                    files = fs.readdir(this.path);
-                                } else {
-                                    files = fs.readdirSync(this.path);
+                                fs.writeFileSync(path.join(this.path, name + ".json"), "{}");
+                            }
+                        }
+                    } else if (args[1] == "table") {
+                        if (args.length != 4) {
+                            throw new SQLException(query, query.length + 1);
+                        } else {
+                            let name;
+                            try {
+                                name = eval(args[2]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                let tableName;
+                                try {
+                                    tableName = eval(args[3]);
+                                } catch {
+                                    throw new SQLException(query, query.length - args[3].length + 1, "Unexpected Token");
                                 }
-                                if (files.includes(schemaArgs[0] + ".json")) {
-                                    let schema;
-                                    if (this.async) {
-                                        schema = JSON.parse(fs.readFile(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
-                                    } else {
-                                        schema = JSON.parse(fs.readFileSync(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
-                                    }
-                                    if (schema.hasOwnProperty(schemaArgs[1])) {
-                                        throw new SQLException("Table " + schemaArgs[1] + " already exists in schema " + schemaArgs[0] + ".");
-                                    } else {
-                                        schema[schemaArgs[1]] = [];
-                                        if (this.async) {
-                                            fs.writeFile(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                        } else {
-                                            fs.writeFileSync(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                        }
-                                    }
+                                let schema;
+                                schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
+                                if (schema.hasOwnProperty(tableName)) {
+                                    throw new SQLException("Table " + tableName + " already exists in schema " + name + ".");
                                 } else {
-                                    throw new SQLException("Schema " + schemaArgs[0] + " does not exist.");
+                                    schema[tableName] = [];
+                                    fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(schema), "utf8");
                                 }
+                            } else {
+                                throw new SQLException("Schema " + name + " does not exists.");
                             }
                         }
                     } else {
-                        throw new SQLException(util.sqlSyntaxError, query, 6);
+                        if (args.length != 4) {
+                            throw new SQLException(query, query.length + 1);
+                        } else {
+                            let name;
+                            try {
+                                name = eval(args[1]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[1].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                let tableName;
+                                    try {
+                                        tableName = eval(args[2]);
+                                    } catch {
+                                        throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                                    }
+                                    let schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
+                                    if (schema.hasOwnProperty(tableName)) {
+                                        const data = eval("(" + args[3] + ")");
+                                        schema[tableName].push(data);
+                                        fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(schema), "utf8");
+                                    } else {
+                                        throw new SQLException("Table " + tableName + " does not exist in schema " + name + ".");
+                                    }
+                            } else {
+                                throw new SQLException("Schema " + name + " does not exists.");
+                            }
+                        }
                     }
                 }
-            } else if (util.equalsIgnoreCase(args[0], "DROP")) {
+            } else if (args[0] == "-") {
                 if (args.length == 1) {
-                    throw new SQLException(util.sqlSyntaxError, query, 6);
+                    throw new SQLException(query, query.length + 1);
                 } else {
-                    if (util.equalsIgnoreCase(args[1], "TABLE")) {
+                    if (args[1] == "schema") {
                         if (args.length != 3) {
-                            let location = 12;
-                            if (args.length > 3) {
-                                location += args[2].length + 1;
-                            }
-                            throw new SQLException(util.sqlSyntaxError, query, location);
+                            throw new SQLException(query, query.length + 1);
                         } else {
-                            const schemaArgs = args[2].split(".");
-                            if (schemaArgs.length != 2) {
-                                throw new SQLException(util.sqlSyntaxError, query, 12);
+                            let name;
+                            try {
+                                name = eval(args[2]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                fs.unlink(path.join(this.path, name + ".json"), function(err) {});
                             } else {
-                                let files;
-                                if (this.async) {
-                                    files = fs.readdir(this.path);
-                                } else {
-                                    files = fs.readdirSync(this.path);
+                                throw new SQLException("Schema " + name + " does not exists.");
+                            }
+                        }
+                    } else if (args[1] == "table") {
+                        if (args.length != 4) {
+                            throw new SQLException(query, query.length + 1);
+                        } else {
+                            let name;
+                            try {
+                                name = eval(args[2]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                let tableName;
+                                try {
+                                    tableName = eval(args[3]);
+                                } catch {
+                                    throw new SQLException(query, query.length - args[3].length + 1, "Unexpected Token");
                                 }
-                                if (files.includes(schemaArgs[0] + ".json")) {
-                                    let schema;
-                                    if (this.async) {
-                                        schema = JSON.parse(fs.readFile(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
-                                    } else {
-                                        schema = JSON.parse(fs.readFileSync(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
-                                    }
-                                    if (schema.hasOwnProperty(schemaArgs[1])) {
-                                        delete schema[schemaArgs[1]];
-                                        if (this.async) {
-                                            fs.writeFile(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                        } else {
-                                            fs.writeFileSync(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                        }
-                                    } else {
-                                        throw new SQLException("Table " + schemaArgs[1] + " doesn't exist in schema " + schemaArgs[0] + ".");
-                                    }
+                                let schema;
+                                schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
+                                if (schema.hasOwnProperty(tableName)) {
+                                    delete schema[tableName];
+                                    fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(schema), "utf8");
                                 } else {
-                                    throw new SQLException("Schema " + schemaArgs[0] + " does not exist.");
+                                    throw new SQLException("Table " + tableName + " does not exist in schema " + name + ".");
                                 }
+                            } else {
+                                throw new SQLException("Schema " + name + " does not exists.");
                             }
                         }
                     } else {
-                        throw new SQLException(util.sqlSyntaxError, query, 6);
-                    }
-                }
-            } else if (util.equalsIgnoreCase(args[0], "INSERT")) {
-                if (args.length == 1) {
-                    throw new SQLException(util.sqlSyntaxError, query, 8);
-                } else {
-                    if (util.equalsIgnoreCase(args[1], "INTO")) {
                         if (args.length == 2) {
-                            throw new SQLException(util.sqlSyntaxError, query, 13);
+                            throw new SQLException(query, query.length + 1);
                         } else {
-                            const schemaArgs = args[2].split(".");
-                            if (schemaArgs.length != 2) {
-                                throw new SQLException(util.sqlSyntaxError, query, 13);
-                            } else {
-                                let files;
-                                if (this.async) {
-                                    files = fs.readdir(this.path);
-                                } else {
-                                    files = fs.readdirSync(this.path);
-                                }
-                                if (files.includes(schemaArgs[0] + ".json")) {
-                                    let schema;
-                                    if (this.async) {
-                                        schema = JSON.parse(fs.readFile(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
-                                    } else {
-                                        schema = JSON.parse(fs.readFileSync(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
+                            let name;
+                            try {
+                                name = eval(args[1]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[1].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                let tableName;
+                                    try {
+                                        tableName = eval(args[2]);
+                                    } catch {
+                                        throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
                                     }
-                                    if (schema.hasOwnProperty(schemaArgs[1])) {
-                                        const cs = util.getPosition(query, "(", 1);
-                                        const ce = util.getPosition(query, ")", 1);
-                                        if (cs == -1 || ce == -1) {
-                                            throw new SQLException(util.sqlSyntaxError, query, 13 + args[2].length + 1);
-                                        } else {
-                                            const rawColumns = query.substring(cs + 1, ce);
-                                            const columns = util.parseColumns(query, rawColumns);
-                                            const vs = util.getPosition(query, "(", 2);
-                                            const ve = util.getPosition(query, ")", 2);
-                                            if (!util.equalsIgnoreCase(query.substring(ce + 1, vs).trim(), "VALUES")) {
-                                                throw new SQLException(util.sqlSyntaxError, query, 13 + args[2].length + rawColumns.length + 4);
-                                            }
-                                            else {
-                                                if (vs == -1 || ve == -1) {
-                                                    throw new SQLException(util.sqlSyntaxError, query, query.indexOf("VALUES") + 8);
-                                                } else {
-                                                    const values = util.parseValues(query);
-                                                    let failed = false;
-                                                    values.forEach(function(set) {
-                                                        if (columns.length != set.length) {
-                                                            throw new SQLException("Number of columns does not match number of values.");
-                                                            failed = true;
-                                                        }
-                                                    });
-                                                    if (!failed) {
-                                                        values.forEach(function(set) {
-                                                            const toPush = {};
-                                                            columns.forEach((key, i) => toPush[key] = set[i]);
-                                                            schema[schemaArgs[1]].push(toPush);
-                                                        });
-                                                        if (this.async) {
-                                                            fs.writeFile(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                                        } else {
-                                                            fs.writeFileSync(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                                        }
-                                                    }
+                                    let schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
+                                    if (schema.hasOwnProperty(tableName)) {
+                                        if (args.length == 3) {
+                                            schema[tableName] = [];
+                                            fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(schema), "utf8");
+                                        } else if (args.length == 4) {
+                                            const conditions = eval("(" + args[3] + ")");
+                                            for (let i = 0; i < schema[tableName].length; i++) {
+                                                const row = schema[tableName][i];
+                                                let del = true;
+                                                del = parse(row, conditions, del);
+                                                if (del) {
+                                                    schema[tableName].splice(i, i + 1);
                                                 }
                                             }
-                                        }
-                                    } else {
-                                        throw new SQLException("Table " + schemaArgs[1] + " doesn't exist in schema " + schemaArgs[0] + ".");
-                                    }
-                                } else {
-                                    throw new SQLException("Schema " + schemaArgs[0] + " does not exist.");
-                                }
-                            }
-                        }
-                    } else {
-                        throw new SQLException(util.sqlSyntaxError, query, 8);
-                    }
-                }
-            } else if (util.equalsIgnoreCase(args[0], "DELETE")) {
-                if (args.length == 1) {
-                    throw new SQLException(util.sqlSyntaxError, query, 8);
-                } else {
-                    if (util.equalsIgnoreCase(args[1], "FROM")) {
-                        if (args.length == 2) {
-                            throw new SQLException(util.sqlSyntaxError, query, 13);
-                        } else {
-                            const schemaArgs = args[2].split(".");
-                            if (schemaArgs.length != 2) {
-                                throw new SQLException(util.sqlSyntaxError, query, 13);
-                            } else {
-                                let files;
-                                if (this.async) {
-                                    files = fs.readdir(this.path);
-                                } else {
-                                    files = fs.readdirSync(this.path);
-                                }
-                                if (files.includes(schemaArgs[0] + ".json")) {
-                                    let schema;
-                                    if (this.async) {
-                                        schema = JSON.parse(fs.readFile(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
-                                    } else {
-                                        schema = JSON.parse(fs.readFileSync(path.join(this.path, schemaArgs[0] + ".json")), "utf8");
-                                    }
-                                    if (schema.hasOwnProperty(schemaArgs[1])) {
-                                        if (args.length == 3) {
-                                            schema[schemaArgs[1]] = [];
-                                            if (this.async) {
-                                                fs.writeFile(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
-                                            } else {
-                                                fs.writeFileSync(path.join(this.path, schemaArgs[0] + ".json"), JSON.stringify(schema), "utf8");
+                                            fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(schema), "utf8");
+                                            function parse(row, conditions, del, op) {
+                                                try {
+                                                    if (op == undefined) {
+                                                        if (Object.keys(conditions).length == 1) {
+                                                            const key = Object.keys(conditions)[0];
+                                                            const values = conditions[Object.keys(conditions)[0]][0];
+                                                            const equals = conditions[Object.keys(conditions)[0]][1];
+                                                            if (key == "&" && conditions[key].constructor.name === "Object") {
+                                                                del = del && parse(row, conditions[key], del, "&");
+                                                            } else if (key == "/" && conditions[key].constructor.name === "Object") {
+                                                                del = parse(row, conditions[key], del, "/");
+                                                            } else {
+                                                                if (values.length == 1 && equals.length == 1) {
+                                                                    if (equals[0]) {
+                                                                        if (row[key] == values[0]) {
+                                                                            del = true;
+                                                                        } else {
+                                                                            del = false;
+                                                                        }
+                                                                    } else {
+                                                                        if (row[key] != values[0]) {
+                                                                            del = true;
+                                                                        } else {
+                                                                            del = false;
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    throw new SQLException("Invalid condition parameters.");
+                                                                }
+                                                            }
+                                                        } else {
+                                                            throw new SQLException("Invalid condition parameters.");
+                                                        }
+                                                        return del;
+                                                    } else {
+                                                        let internalDel = true;
+                                                        for (let i in conditions) {
+                                                            if (i == "&" && conditions[i].constructor.name === "Object") {
+                                                                if (op == "&") {
+                                                                    internalDel = internalDel && parse(row, conditions[i], del, "&");
+                                                                } else if (op == "/") {
+                                                                    internalDel = internalDel || parse(row, conditions[i], del, "&");
+                                                                }
+                                                            } else if (i == "/" && conditions[i].constructor.name === "Object") {
+                                                                if (op == "&") {
+                                                                    internalDel = internalDel && parse(row, conditions[i], del, "/");
+                                                                } else if (op == "/") {
+                                                                    internalDel = internalDel || parse(row, conditions[i], del, "/");
+                                                                }
+                                                            } else {
+                                                                const key = i;
+                                                                const values = conditions[i][0];
+                                                                const equals = conditions[i][1];
+                                                                if (values.length == equals.length) {
+                                                                    for (let n = 0; n < values.length; n++) {
+                                                                        if (equals[n]) {
+                                                                            if (row[key] == values[n]) {
+                                                                                if (op == "&") {
+                                                                                    internalDel = internalDel && true;
+                                                                                } else if (op == "/") {
+                                                                                    internalDel = internalDel || true;
+                                                                                }
+                                                                            } else {
+                                                                                if (op == "&") {
+                                                                                    internalDel = internalDel && false;
+                                                                                } else if (op == "/") {
+                                                                                    internalDel = internalDel || false;
+                                                                                }
+                                                                            }
+                                                                        } else {
+                                                                            if (row[key] != values[n]) {
+                                                                                if (op == "&") {
+                                                                                    internalDel = internalDel && true;
+                                                                                } else if (op == "/") {
+                                                                                    internalDel = internalDel || true;
+                                                                                }
+                                                                            } else {
+                                                                                if (op == "&") {
+                                                                                    internalDel = internalDel && false;
+                                                                                } else if (op == "/") {
+                                                                                    internalDel = internalDel || false;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    throw new SQLException("Invalid condition parameters.");
+                                                                }
+                                                            }
+                                                        }
+                                                        return internalDel;
+                                                    }
+                                                } catch {
+                                                    throw new SQLException("Invalid condition parameters.");
+                                                }
                                             }
                                         } else {
-                                            // Add WHERE clause
+                                            throw new SQLException(query, query.length - args[4].length + 1);
                                         }
                                     } else {
-                                        throw new SQLException("Table " + schemaArgs[1] + " doesn't exist in schema " + schemaArgs[0] + ".");
+                                        throw new SQLException("Table " + tableName + " does not exist in schema " + name + ".");
                                     }
-                                } else {
-                                    throw new SQLException("Schema " + schemaArgs[0] + " does not exist.");
-                                }
+                            } else {
+                                throw new SQLException("Schema " + name + " does not exists.");
                             }
                         }
-                    } else {
-                        throw new SQLException(util.sqlSyntaxError, query, 8);
                     }
                 }
+            } else if (args[0] == "^") {
+                if (args.length == 1) {
+                    throw new SQLException(query, query.length + 1);
+                } else {
+                    if (args[1] == "schema") {
+                        if (args.length != 4) {
+                            throw new SQLException(query, query.length + 1)
+                        } else {
+                            let name;
+                            try {
+                                name = eval(args[2]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                let newName;
+                                try {
+                                    newName = eval(args[3]);
+                                } catch {
+                                    throw new SQLException(query, query.length - args[3].length + 1, "Unexpected Token");
+                                }
+                                fs.renameSync(path.join(this.path, name + ".json"), path.join(this.path, newName + ".json"));
+                            } else {
+                                throw new SQLException("Schema " + name + " does not exists.");
+                            }
+                        }
+                    }else if (args[1] == "table") {
+                        if (args.length != 5) {
+                            throw new SQLException(query, query.length + 1);
+                        } else {
+                            let name;
+                            try {
+                                name = eval(args[2]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                let tableName;
+                                try {
+                                    tableName = eval(args[3]);
+                                } catch {
+                                    throw new SQLException(query, query.length - args[3].length + 1, "Unexpected Token");
+                                }
+                                let schema;
+                                schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
+                                if (schema.hasOwnProperty(tableName)) {
+                                    let newName;
+                                    try {
+                                        newName = eval(args[4]);
+                                    } catch {
+                                        throw new SQLException(query, query.length - args[4].length + 1, "Unexpected Token");
+                                    }
+                                    if (tableName != newName) {
+                                        if (schema.hasOwnProperty(newName)) {
+                                            throw new SQLException("New name already exists in schema " + name + ".");
+                                        } else {
+                                            schema[newName] = schema[tableName];
+                                            delete schema[tableName];
+                                            fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(schema), "utf8");
+                                        }
+                                    } else {
+                                        throw new SQLException("New name is name as old name.");
+                                    }
+                                } else {
+                                    throw new SQLException("Table " + tableName + " does not exist in schema " + name + ".");
+                                }
+                            } else {
+                                throw new SQLException("Schema " + name + " does not exists.");
+                            }
+                        }
+                    }
+                }
+            } else if (args[0] == "-.") {
+                
+            } else {
+                throw new SQLException(query, 1, "Unexpected Token")
             }
         } else {
-            throw new SQLException(util.sqlSyntaxError);
-        }
-    }
-}
-
-class Schema {
-    constructor(database, name) {
-        this.database = database;
-        this.name = name;
-    }
-
-    create() {
-        if (this.database.async) {
-            fs.writeFile(path.join(this.database.path, this.name + ".json"), "{}");
-        } else {
-            fs.writeFileSync(path.join(this.database.path, this.name + ".json"), "{}");
-        }
-    }
-
-    delete() {
-        if (this.database.async) {
-            fs.unlink((path.join(this.database.path, this.name + ".json")));
-        } else {
-            fs.unlinkSync((path.join(this.database.path, this.name + ".json")));
+            throw new SQLException("Query is empty.");
         }
     }
 }
