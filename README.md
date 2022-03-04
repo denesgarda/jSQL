@@ -92,10 +92,10 @@ Deleting everything under a [condition](#Conditions) in a table with the name "a
 -|'main'|'accounts'|{ "username": [["user1"], [true]] }
 ```
 
-Updating **(Work in Progress)**:
+Updating everything under a [condition](#Conditions) in a table with the name "accounts" in a schema with the name "main" to set "username" equal to "admin" where it is "user1". A field can be set to ``undefined`` to delete it:
 
 ```
-^|"<schema>"|"<table>"|{object}|{conditions}
+^|'main'|'accounts'|{ "username": "admin" }|{ "username": [["user1"], [true]] }
 ```
 
 Selecting **(Work in Progress)**:
