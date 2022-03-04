@@ -321,7 +321,7 @@ class Database {
                                 throw new SQLException("Schema " + name + " does not exists.");
                             }
                         }
-                    }else if (args[1] == "table") {
+                    } else if (args[1] == "table") {
                         if (args.length != 5) {
                             throw new SQLException(query, query.length + 1);
                         } else {
