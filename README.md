@@ -1,6 +1,6 @@
 # jSQL
 
-jSQL is a locally instanciated database
+jSQL is a locally instanciated database.
 
 ## Node.js
 
