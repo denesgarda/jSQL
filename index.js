@@ -270,7 +270,7 @@ class Database {
                             }
                         }
                     } else {
-                        if (args.length != 5) {
+                        if (args.length < 3) {
                             throw new SQLException(query, query.length + 1);
                         } else {
                             let name;
@@ -291,16 +291,27 @@ class Database {
                                     let updated = schema;
                                     if (schema.hasOwnProperty(tableName)) {
                                         const data = eval("(" + args[3] + ")");
-                                        const conditions = eval("(" + args[4] + ")");
-                                        for (let i = 0; i < schema[tableName].length; i++) {
-                                            const row = schema[tableName][i];
-                                            let upd = true;
-                                            upd = parse(row, conditions, upd);
-                                            if (upd) {
+                                        if (args.length == 5) {
+                                            const conditions = eval("(" + args[4] + ")");
+                                            for (let i = 0; i < schema[tableName].length; i++) {
+                                                const row = schema[tableName][i];
+                                                let upd = true;
+                                                upd = parse(row, conditions, upd);
+                                                if (upd) {
+                                                    for (let u in data) {
+                                                        updated[tableName][i][u] = data[u];
+                                                    }
+                                                }
+                                            }
+                                        } else if (args.length == 4) {
+                                            for (let i = 0; i < schema[tableName].length; i++) {
+                                                const row = schema[tableName][i];
                                                 for (let u in data) {
                                                     updated[tableName][i][u] = data[u];
                                                 }
                                             }
+                                        } else {
+                                            throw new SQLException(query, query.length + 1);
                                         }
                                         fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(updated), "utf8");
                                     } else {
@@ -313,7 +324,7 @@ class Database {
                     }
                 }
             } else if (args[0] == ".") {
-                if (args.length != 4) {
+                if (args.length < 3) {
                     throw new SQLException(query, query.length + 1);
                 } else {
                     let name;
@@ -333,14 +344,23 @@ class Database {
                             let schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
                             let get = [];
                             if (schema.hasOwnProperty(tableName)) {
-                                const conditions = eval("(" + args[3] + ")");
-                                for (let i = 0; i < schema[tableName].length; i++) {
-                                    const row = schema[tableName][i];
-                                    let g = true;
-                                    g = parse(row, conditions, g);
-                                    if (g) {
+                                if (args.length == 4) {
+                                    const conditions = eval("(" + args[3] + ")");
+                                    for (let i = 0; i < schema[tableName].length; i++) {
+                                        const row = schema[tableName][i];
+                                        let g = true;
+                                        g = parse(row, conditions, g);
+                                        if (g) {
+                                            get.push(row);
+                                        }
+                                    }
+                                } else if (args.length == 3) {
+                                    for (let i = 0; i < schema[tableName].length; i++) {
+                                        const row = schema[tableName][i];
                                         get.push(row);
                                     }
+                                } else {
+                                    throw new SQLException(query, query.length + 1);
                                 }
                                 return get;
                             } else {
