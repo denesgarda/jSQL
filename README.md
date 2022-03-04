@@ -122,7 +122,7 @@ The following is equivalent to ``WHERE username="user1";``. The boolean says if 
 }
 ```
 
-If there are multiple conditions under the name key, they're embedded into the two dimensional array.
+If there are multiple conditions under the same key, they're embedded into the two dimensional array.
 
 The following is equivalent to ``WHERE username="user1" OR username="user2;``.
 
