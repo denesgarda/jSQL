@@ -394,7 +394,12 @@ function parse(row, conditions, del, op) {
             }
             return del;
         } else {
-            let internalDel = true;
+            let internalDel;
+            if (op == "/") {
+                internalDel = false;
+            } else if (op == "&") {
+                internalDel = true;
+            }
             for (let i in conditions) {
                 if (i == "&" && conditions[i].constructor.name === "Object") {
                     if (op == "&") {
