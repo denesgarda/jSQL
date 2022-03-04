@@ -186,102 +186,6 @@ class Database {
                                                 }
                                             }
                                             fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(schema), "utf8");
-                                            function parse(row, conditions, del, op) {
-                                                try {
-                                                    if (op == undefined) {
-                                                        if (Object.keys(conditions).length == 1) {
-                                                            const key = Object.keys(conditions)[0];
-                                                            const values = conditions[Object.keys(conditions)[0]][0];
-                                                            const equals = conditions[Object.keys(conditions)[0]][1];
-                                                            if (key == "&" && conditions[key].constructor.name === "Object") {
-                                                                del = del && parse(row, conditions[key], del, "&");
-                                                            } else if (key == "/" && conditions[key].constructor.name === "Object") {
-                                                                del = parse(row, conditions[key], del, "/");
-                                                            } else {
-                                                                if (values.length == 1 && equals.length == 1) {
-                                                                    if (equals[0]) {
-                                                                        if (row[key] == values[0]) {
-                                                                            del = true;
-                                                                        } else {
-                                                                            del = false;
-                                                                        }
-                                                                    } else {
-                                                                        if (row[key] != values[0]) {
-                                                                            del = true;
-                                                                        } else {
-                                                                            del = false;
-                                                                        }
-                                                                    }
-                                                                } else {
-                                                                    throw new SQLException("Invalid condition parameters.");
-                                                                }
-                                                            }
-                                                        } else {
-                                                            throw new SQLException("Invalid condition parameters.");
-                                                        }
-                                                        return del;
-                                                    } else {
-                                                        let internalDel = true;
-                                                        for (let i in conditions) {
-                                                            if (i == "&" && conditions[i].constructor.name === "Object") {
-                                                                if (op == "&") {
-                                                                    internalDel = internalDel && parse(row, conditions[i], del, "&");
-                                                                } else if (op == "/") {
-                                                                    internalDel = internalDel || parse(row, conditions[i], del, "&");
-                                                                }
-                                                            } else if (i == "/" && conditions[i].constructor.name === "Object") {
-                                                                if (op == "&") {
-                                                                    internalDel = internalDel && parse(row, conditions[i], del, "/");
-                                                                } else if (op == "/") {
-                                                                    internalDel = internalDel || parse(row, conditions[i], del, "/");
-                                                                }
-                                                            } else {
-                                                                const key = i;
-                                                                const values = conditions[i][0];
-                                                                const equals = conditions[i][1];
-                                                                if (values.length == equals.length) {
-                                                                    for (let n = 0; n < values.length; n++) {
-                                                                        if (equals[n]) {
-                                                                            if (row[key] == values[n]) {
-                                                                                if (op == "&") {
-                                                                                    internalDel = internalDel && true;
-                                                                                } else if (op == "/") {
-                                                                                    internalDel = internalDel || true;
-                                                                                }
-                                                                            } else {
-                                                                                if (op == "&") {
-                                                                                    internalDel = internalDel && false;
-                                                                                } else if (op == "/") {
-                                                                                    internalDel = internalDel || false;
-                                                                                }
-                                                                            }
-                                                                        } else {
-                                                                            if (row[key] != values[n]) {
-                                                                                if (op == "&") {
-                                                                                    internalDel = internalDel && true;
-                                                                                } else if (op == "/") {
-                                                                                    internalDel = internalDel || true;
-                                                                                }
-                                                                            } else {
-                                                                                if (op == "&") {
-                                                                                    internalDel = internalDel && false;
-                                                                                } else if (op == "/") {
-                                                                                    internalDel = internalDel || false;
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                } else {
-                                                                    throw new SQLException("Invalid condition parameters.");
-                                                                }
-                                                            }
-                                                        }
-                                                        return internalDel;
-                                                    }
-                                                } catch {
-                                                    throw new SQLException("Invalid condition parameters.");
-                                                }
-                                            }
                                         } else {
                                             throw new SQLException(query, query.length - args[4].length + 1);
                                         }
@@ -366,6 +270,47 @@ class Database {
                                 throw new SQLException("Schema " + name + " does not exists.");
                             }
                         }
+                    } else {
+                        if (args.length != 5) {
+                            throw new SQLException(query, query.length + 1);
+                        } else {
+                            let name;
+                            try {
+                                name = eval(args[1]);
+                            } catch {
+                                throw new SQLException(query, query.length - args[1].length + 1, "Unexpected Token");
+                            }
+                            let files = fs.readdirSync(this.path);
+                            if (files.includes(name + ".json")) {
+                                let tableName;
+                                    try {
+                                        tableName = eval(args[2]);
+                                    } catch {
+                                        throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                                    }
+                                    let schema = JSON.parse(fs.readFileSync(path.join(this.path, name + ".json")), "utf8");
+                                    let updated = schema;
+                                    if (schema.hasOwnProperty(tableName)) {
+                                        const data = eval("(" + args[3] + ")");
+                                        const conditions = eval("(" + args[4] + ")");
+                                        for (let i = 0; i < schema[tableName].length; i++) {
+                                            const row = schema[tableName][i];
+                                            let upd = true;
+                                            upd = parse(row, conditions, upd);
+                                            if (upd) {
+                                                for (let u in data) {
+                                                    updated[tableName][i][u] = data[u];
+                                                }
+                                            }
+                                        }
+                                        fs.writeFileSync(path.join(this.path, name + ".json"), JSON.stringify(updated), "utf8");
+                                    } else {
+                                        throw new SQLException("Table " + tableName + " does not exist in schema " + name + ".");
+                                    }
+                            } else {
+                                throw new SQLException("Schema " + name + " does not exists.");
+                            }
+                        }
                     }
                 }
             } else if (args[0] == "-.") {
@@ -376,6 +321,103 @@ class Database {
         } else {
             throw new SQLException("Query is empty.");
         }
+    }
+}
+
+function parse(row, conditions, del, op) {
+    try {
+        if (op == undefined) {
+            if (Object.keys(conditions).length == 1) {
+                const key = Object.keys(conditions)[0];
+                const values = conditions[Object.keys(conditions)[0]][0];
+                const equals = conditions[Object.keys(conditions)[0]][1];
+                if (key == "&" && conditions[key].constructor.name === "Object") {
+                    del = del && parse(row, conditions[key], del, "&");
+                } else if (key == "/" && conditions[key].constructor.name === "Object") {
+                    del = parse(row, conditions[key], del, "/");
+                } else {
+                    if (values.length == 1 && equals.length == 1) {
+                        if (equals[0]) {
+                            if (row[key] == values[0]) {
+                                del = true;
+                            } else {
+                                del = false;
+                            }
+                        } else {
+                            if (row[key] != values[0]) {
+                                del = true;
+                            } else {
+                                del = false;
+                            }
+                        }
+                    } else {
+                        throw new SQLException("Invalid condition parameters.");
+                    }
+                }
+            } else {
+                throw new SQLException("Invalid condition parameters.");
+            }
+            return del;
+        } else {
+            let internalDel = true;
+            for (let i in conditions) {
+                if (i == "&" && conditions[i].constructor.name === "Object") {
+                    if (op == "&") {
+                        internalDel = internalDel && parse(row, conditions[i], del, "&");
+                    } else if (op == "/") {
+                        internalDel = internalDel || parse(row, conditions[i], del, "&");
+                    }
+                } else if (i == "/" && conditions[i].constructor.name === "Object") {
+                    if (op == "&") {
+                        internalDel = internalDel && parse(row, conditions[i], del, "/");
+                    } else if (op == "/") {
+                        internalDel = internalDel || parse(row, conditions[i], del, "/");
+                    }
+                } else {
+                    const key = i;
+                    const values = conditions[i][0];
+                    const equals = conditions[i][1];
+                    if (values.length == equals.length) {
+                        for (let n = 0; n < values.length; n++) {
+                            if (equals[n]) {
+                                if (row[key] == values[n]) {
+                                    if (op == "&") {
+                                        internalDel = internalDel && true;
+                                    } else if (op == "/") {
+                                        internalDel = internalDel || true;
+                                    }
+                                } else {
+                                    if (op == "&") {
+                                        internalDel = internalDel && false;
+                                    } else if (op == "/") {
+                                        internalDel = internalDel || false;
+                                    }
+                                }
+                            } else {
+                                if (row[key] != values[n]) {
+                                    if (op == "&") {
+                                        internalDel = internalDel && true;
+                                    } else if (op == "/") {
+                                        internalDel = internalDel || true;
+                                    }
+                                } else {
+                                    if (op == "&") {
+                                        internalDel = internalDel && false;
+                                    } else if (op == "/") {
+                                        internalDel = internalDel || false;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        throw new SQLException("Invalid condition parameters.");
+                    }
+                }
+            }
+            return internalDel;
+        }
+    } catch {
+        throw new SQLException("Invalid condition parameters.");
     }
 }
 
