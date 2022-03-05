@@ -2,14 +2,19 @@ const fs = require("fs");
 const path = require("path");
 
 const SQLException = require("./err/SQLException");
+const backup = require("./backup/backup");
 
 class Database {
-    constructor(path) {
+    constructor(path, backup) {
         this.path = path;
+        this.backup = backup;
     }
 
     execute(query) {
         if (query) {
+            if (this.backup) {
+                backup(this, query);
+            }
             const rawArgs = query.split("|");
             let args = [];
             rawArgs.forEach(function(arg) {
