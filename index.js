@@ -397,14 +397,21 @@ function parse(row, conditions, del, op) {
                     del = parse(row, conditions[key], del, "/");
                 } else {
                     if (values.length == 1 && equals.length == 1) {
+                        const layers = key.split(".");
+                        let value;
+                        let iterator = row;
+                        for (let layer in layers) {
+                            iterator = iterator[layers[layer]];
+                        }
+                        value = iterator;
                         if (equals[0]) {
-                            if (row[key] == values[0]) {
+                            if (value == values[0]) {
                                 del = true;
                             } else {
                                 del = false;
                             }
                         } else {
-                            if (row[key] != values[0]) {
+                            if (value != values[0]) {
                                 del = true;
                             } else {
                                 del = false;
@@ -444,8 +451,15 @@ function parse(row, conditions, del, op) {
                     const equals = conditions[i][1];
                     if (values.length == equals.length) {
                         for (let n = 0; n < values.length; n++) {
+                            const layers = key.split(".");
+                            let value;
+                            let iterator = row;
+                            for (let layer in layers) {
+                                iterator = iterator[layers[layer]];
+                            }
+                            value = iterator;
                             if (equals[n]) {
-                                if (row[key] == values[n]) {
+                                if (value == values[n]) {
                                     if (op == "&") {
                                         internalDel = internalDel && true;
                                     } else if (op == "/") {
@@ -459,7 +473,7 @@ function parse(row, conditions, del, op) {
                                     }
                                 }
                             } else {
-                                if (row[key] != values[n]) {
+                                if (value != values[n]) {
                                     if (op == "&") {
                                         internalDel = internalDel && true;
                                     } else if (op == "/") {
