@@ -2,3 +2,6 @@
 /testing
 /design
 CNAME
+_config.yml
+.gitattributes
+.gitignore
