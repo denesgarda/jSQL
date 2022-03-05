@@ -1,5 +1,7 @@
 const fs = require("fs");
 const path = require("path");
+const net = require("net");
+const readline = require("readline");
 
 const SQLException = require("./err/SQLException");
 const backup = require("./backup/backup");
@@ -500,4 +502,95 @@ function parse(row, conditions, del, op) {
     }
 }
 
-module.exports = { Database };
+class Server {
+    constructor(database, port) {
+        this.database = database;
+        this.port = port;
+    }
+
+    start() {
+        try {
+            const def = {
+                "users": {
+                    "username": "root",
+                    "password": "root"
+                }
+            }
+
+            this.database.execute("+|schema|'server-config'");
+            this.database.execute("+|table|'server-config'|'properties'");
+            this.database.execute("+|'server-config'|'properties'|" + JSON.stringify(def));
+        } catch {}
+        const ex = this;
+        const server = net.createServer(function(socket) {
+            socket.on("data", function(data) {
+                const args = data.toString("utf-8").split("~");
+                const condition = {
+                    "&": {
+                        "users.username": [ [ args[0] ], [ true ] ],
+                        "users.password": [ [ args[1] ], [ true ] ]
+                    }
+                }
+                const user = ex.database.execute(".|'server-config'|'properties'|" + JSON.stringify(condition));
+                if (user.length >= 1) {
+                    try {
+                        const rs = ex.database.execute(args[2]);
+                        if (rs) {
+                            socket.write("1~" + JSON.stringify(rs));
+                        } else {
+                            socket.write("0");
+                        }
+                    } catch (e) {
+                        socket.write("-1~" + e.toString());
+                    }
+                } else {
+                    socket.write("-1~Incorrect username or password.");
+                }
+                socket.end();
+            });
+        });
+        server.listen(this.port);
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        rl.on("line", (line) => {
+            try {
+                ex.database.execute(line);
+            } catch (e) {
+                console.log(e.name);
+            }
+        });
+    }
+}
+
+class Connector {
+    constructor(host, port, username, password) {
+        this.host = host;
+        this.port = port;
+        this.username = username;
+        this.password = password;
+    }
+
+    async execute(query) {
+        let ex = this;
+        const client = new net.Socket();
+        client.connect( { host: this.host, port: this.port }, function() {
+            client.write(ex.username + "~" + ex.password + "~" + query);
+        });
+        return await new Promise((resolve) => client.on("data", function(data) {
+            const args = data.toString("utf-8").split("~");
+            if (args[0] == "0") {
+                client.destroy();
+            } else if (args[0] == "1") {
+                client.destroy();
+                resolve(JSON.parse(args[1]));
+            } else if (args[0] == "-1") {
+                client.destroy();
+                throw new SQLException(args[1]);
+            }
+        }));
+    }
+}
+
+module.exports = { Database, Server, Connector };
