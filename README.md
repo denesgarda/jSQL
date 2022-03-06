@@ -2,7 +2,7 @@
 
 [Documentation](https://github.com/DenDen747/jSQL/wiki)
 
-jSQL is a locally instantiated database for Node.js. It provides basic functionalities of a local database, unique to a single project, meaning that no configuration from one project will affect another one.
+jSQL is a locally instantiated database for Node.js. It provides the functionalities of a database, unique to a single project, meaning that no configuration from one project will affect another one.
 
 ## Installation
 
