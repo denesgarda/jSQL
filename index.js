@@ -511,37 +511,54 @@ class Server {
     start() {
         try {
             const def = {
-                "users": {
-                    "username": "root",
-                    "password": "root"
-                }
+                "username": "root",
+                "password": "root",
+                "connect": "'localhost'"
             }
-
             this.database.execute("+|schema|'server-config'");
-            this.database.execute("+|table|'server-config'|'properties'");
-            this.database.execute("+|'server-config'|'properties'|" + JSON.stringify(def));
+            this.database.execute("+|table|'server-config'|'users'");
+            this.database.execute("+|'server-config'|'users'|" + JSON.stringify(def));
         } catch {}
         const ex = this;
         const server = net.createServer(function(socket) {
             socket.on("data", function(data) {
+                let address = socket.remoteAddress.replace(/^.*:/, '');
+                if (address == "127.0.0.1") {
+                    address = "localhost";
+                }
                 const args = data.toString("utf-8").split("~");
                 const condition = {
                     "&": {
-                        "users.username": [ [ args[0] ], [ true ] ],
-                        "users.password": [ [ args[1] ], [ true ] ]
+                        "username": [ [ args[0] ], [ true ] ],
+                        "password": [ [ args[1] ], [ true ] ]
                     }
                 }
-                const user = ex.database.execute(".|'server-config'|'properties'|" + JSON.stringify(condition));
+                const user = ex.database.execute(".|'server-config'|'users'|" + JSON.stringify(condition));
                 if (user.length >= 1) {
-                    try {
-                        const rs = ex.database.execute(args[2]);
-                        if (rs) {
-                            socket.write("1~" + JSON.stringify(rs));
-                        } else {
-                            socket.write("0");
+                    let allowedAddresses;
+                    if (user[0].connect) {
+                        allowedAddresses = eval("(" + user[0].connect + ")");
+                        for (let i = 0; i < allowedAddresses.length ; i++) {
+                            if (allowedAddresses[i] == "127.0.0.1") {
+                                allowedAddresses[i] = "localhost";
+                            }
                         }
-                    } catch (e) {
-                        socket.write("-1~" + e.toString());
+                    } else {
+                        allowedAddresses = [];
+                    }
+                    if (allowedAddresses.includes(address)) {
+                        try {
+                            const rs = ex.database.execute(args[2]);
+                            if (rs) {
+                                socket.write("1~" + JSON.stringify(rs));
+                            } else {
+                                socket.write("0");
+                            }
+                        } catch (e) {
+                            socket.write("-1~" + e.toString());
+                        }
+                    } else {
+                        socket.write("-1~Connection refused.");
                     }
                 } else {
                     socket.write("-1~Incorrect username or password.");
