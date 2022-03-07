@@ -536,8 +536,12 @@ class Server {
                 const user = ex.database.execute(".|'server-config'|'users'|" + JSON.stringify(condition));
                 if (user.length >= 1) {
                     let allowedAddresses;
+                    let any = false;
                     if (user[0].connect) {
                         allowedAddresses = eval("(" + user[0].connect + ")");
+                        if (allowedAddresses.includes("%")) {
+                            any = true;
+                        }
                         for (let i = 0; i < allowedAddresses.length ; i++) {
                             if (allowedAddresses[i] == "127.0.0.1") {
                                 allowedAddresses[i] = "localhost";
@@ -546,7 +550,7 @@ class Server {
                     } else {
                         allowedAddresses = [];
                     }
-                    if (allowedAddresses.includes(address)) {
+                    if (allowedAddresses.includes(address) || any) {
                         try {
                             const rs = ex.database.execute(args[2]);
                             if (rs) {
