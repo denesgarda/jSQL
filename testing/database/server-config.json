@@ -1,1 +1,5 @@
-{"properties":[{"users":{"username":"root","password":"root"}}]}
+{
+  "users": [
+    { "username": "root", "password": "root", "connect": "'localhost'" }
+  ]
+}
