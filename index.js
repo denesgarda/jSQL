@@ -12,7 +12,7 @@ class Database {
         this.backup = backup;
     }
 
-    execute(query) {
+    execute(query, ex) {
         if (query) {
             if (this.backup) {
                 backup(this, query);
@@ -38,6 +38,9 @@ class Database {
                             } catch {
                                 throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
                             }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
+                            }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
                                 throw new SQLException("Schema " + name + " already exists.");
@@ -54,6 +57,9 @@ class Database {
                                 name = eval(args[2]);
                             } catch {
                                 throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
                             }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
@@ -84,6 +90,9 @@ class Database {
                                 name = eval(args[1]);
                             } catch {
                                 throw new SQLException(query, query.length - args[1].length + 1, "Unexpected Token");
+                            }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
                             }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
@@ -121,6 +130,9 @@ class Database {
                             } catch {
                                 throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
                             }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
+                            }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
                                 fs.unlink(path.join(this.path, name + ".json"), function(err) {});
@@ -137,6 +149,9 @@ class Database {
                                 name = eval(args[2]);
                             } catch {
                                 throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
                             }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
@@ -167,6 +182,9 @@ class Database {
                                 name = eval(args[1]);
                             } catch {
                                 throw new SQLException(query, query.length - args[1].length + 1, "Unexpected Token");
+                            }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
                             }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
@@ -218,6 +236,9 @@ class Database {
                             } catch {
                                 throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
                             }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
+                            }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
                                 let newName;
@@ -240,6 +261,9 @@ class Database {
                                 name = eval(args[2]);
                             } catch {
                                 throw new SQLException(query, query.length - args[2].length + 1, "Unexpected Token");
+                            }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
                             }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
@@ -285,6 +309,9 @@ class Database {
                                 name = eval(args[1]);
                             } catch {
                                 throw new SQLException(query, query.length - args[1].length + 1, "Unexpected Token");
+                            }
+                            if (name == "server-config" && ex) {
+                                throw new SQLException("Operation not allowed.");
                             }
                             let files = fs.readdirSync(this.path);
                             if (files.includes(name + ".json")) {
@@ -339,6 +366,9 @@ class Database {
                         name = eval(args[1]);
                     } catch {
                         throw new SQLException(query, query.length - args[1].length + 1, "Unexpected Token");
+                    }
+                    if (name == "server-config" && ex) {
+                        throw new SQLException("Operation not allowed.");
                     }
                     let files = fs.readdirSync(this.path);
                     if (files.includes(name + ".json")) {
@@ -552,7 +582,7 @@ class Server {
                     }
                     if (allowedAddresses.includes(address) || any) {
                         try {
-                            const rs = ex.database.execute(args[2]);
+                            const rs = ex.database.execute(args[2], true);
                             if (rs) {
                                 socket.write("1~" + JSON.stringify(rs));
                             } else {
